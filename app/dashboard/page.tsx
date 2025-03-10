@@ -1,16 +1,52 @@
-"use client";  // Add this at the top
+ "use client";
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { FileText, Users, BookOpen, BarChart } from "lucide-react";
 import { RecentUploads } from "@/components/recent-uploads";
 import { TestsOverview } from "@/components/tests-overview";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { useDropzone } from "react-dropzone";
 // import Cookies from "js-cookie";
 
 export default function DashboardPage() {
   const router = useRouter();
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [text, setText] = useState<string>("");
+
+  const { getRootProps, getInputProps } = useDropzone({
+    accept: { "application/pdf": [".pdf"] },
+    onDrop: (acceptedFiles) => setSelectedFile(acceptedFiles[0]),
+  });
+
+  const handleUpload = async () => {
+    if (!selectedFile) return;
+
+    const formData = new FormData();
+    formData.append("file", selectedFile);
+
+    const res = await fetch("/api/upload", { method: "POST", body: formData });
+    const data = await res.json();
+
+    if (res.ok) {
+      alert("File uploaded successfully!");
+      extractText(selectedFile.name);
+    } else {
+      alert("Upload failed: " + data.error);
+    }
+  };
+
+  const extractText = async (fileName: string) => {
+    const res = await fetch(`/api/extract?id=${encodeURIComponent(fileName)}`);
+    const data = await res.json();
+
+    if (res.ok) {
+      setText(data.text);
+    } else {
+      alert("Error extracting text: " + data.error);
+    }
+  };
 
   // useEffect(() => {
   //   const token = Cookies.get("token"); // Check if token exists
@@ -93,6 +129,27 @@ export default function DashboardPage() {
           </Card>
         </TabsContent>
       </Tabs>
+      <div className="p-5">
+        <h1 className="text-xl font-bold">Upload & Extract Text using Google Gemini</h1>
+        <div {...getRootProps()} className="border-2 border-dashed p-5 cursor-pointer my-4">
+          <input {...getInputProps()} />
+          <p>Drag & drop a PDF file here, or click to select</p>
+        </div>
+        {selectedFile && (
+          <div>
+            <p>Selected File: {selectedFile.name}</p>
+            <button onClick={handleUpload} className="bg-blue-500 text-white px-4 py-2 mt-3">
+              Upload & Extract Text
+            </button>
+          </div>
+        )}
+        {text && (
+          <div className="mt-5">
+            <h2 className="text-lg font-bold">Extracted Text:</h2>
+            <pre className="p-3 border">{text}</pre>
+          </div>
+        )}
+      </div>
     </div>
   );
 }
