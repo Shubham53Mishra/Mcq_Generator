@@ -156,7 +156,11 @@ export default function UploadPage() {
               <CardTitle>Extracted Data</CardTitle>
             </CardHeader>
             <CardContent>
-              {extractedText && <p className="p-4 bg-gray-100 rounded">{extractedText}</p>}
+              {extractedText && (
+                <pre className="p-4 bg-gray-100 rounded whitespace-pre-wrap">
+                  {extractedText}
+                </pre>
+              )}
               {extractedQuestions.length > 0 && (
                 <ul>
                   {extractedQuestions.map((q, index) => (
