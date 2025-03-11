@@ -41,6 +41,7 @@
     "@uploadthing/react": "^7.3.0",
     "autoprefixer": "^10.4.20",
     "axios": "^1.8.2",
+    "bcrypt": "^5.1.1",
     "bcryptjs": "^3.0.2",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
@@ -73,6 +74,7 @@
     "zod": "latest"
   },
   "devDependencies": {
+    "@types/bcrypt": "^5.0.2",
     "@types/formidable": "^3.4.5",
     "@types/fs-extra": "^11.0.4",
     "@types/jsonwebtoken": "^9.0.9",
