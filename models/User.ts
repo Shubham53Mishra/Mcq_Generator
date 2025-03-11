@@ -5,6 +5,7 @@ const UserSchema = new mongoose.Schema({
   email: { type: String, required: true, unique: true },
   password: { type: String, required: true },
   role: { type: String, enum: ["faculty", "student"], default: "student" },
+  profileImage: { type: String }, // Add this line
 });
 
 const User = mongoose.models.User || mongoose.model("User", UserSchema);
