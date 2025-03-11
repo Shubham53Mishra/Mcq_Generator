@@ -1,43 +1,51 @@
-"use client"
+"use client";
 
-import { useState } from "react"
-import Link from "next/link"
-import { useRouter } from "next/navigation"
-import { z } from "zod"
-import { useForm } from "react-hook-form"
-import { zodResolver } from "@hookform/resolvers/zod"
-import { Button } from "@/components/ui/button"
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form"
-import { Input } from "@/components/ui/input"
-import { useToast } from "@/components/ui/use-toast"
-import { BookOpen } from "lucide-react"
+import { useState } from "react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { z } from "zod";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { Button } from "@/components/ui/button";
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import { Input } from "@/components/ui/input";
+import { BookOpen } from "lucide-react";
 
+// ✅ Form Validation Schema
 const formSchema = z.object({
   email: z.string().email({ message: "Please enter a valid email address" }),
   password: z.string().min(6, { message: "Password must be at least 6 characters" }),
-})
+});
 
-// Function to call the API
+// ✅ API Call Function
 async function login(email: string, password: string) {
-  const res = await fetch("/api/auth/signin", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ email, password }),
-  })
+  try {
+    const res = await fetch("/api/auth/signin", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email, password }),
+    });
 
-  const data = await res.json()
+    const data = await res.json();
+    console.log("API Response:", data);
 
-  if (!res.ok) {
-    throw new Error(data.error || "Invalid credentials")
+    if (!res.ok) {
+      throw new Error(data.error || "Invalid credentials");
+    }
+
+    return data;
+  } catch (error) {
+    console.error("API Fetch Error:", error);
+    throw error;
   }
-
-  return data
 }
 
+// ✅ Login Page Component
 export default function LoginPage() {
-  const router = useRouter()
-  const { toast } = useToast()
-  const [isLoading, setIsLoading] = useState(false)
+  const router = useRouter();
+  const [isLoading, setIsLoading] = useState(false);
+  const [message, setMessage] = useState<string | null>(null); // ✅ Message state
+  const [messageType, setMessageType] = useState<"success" | "error" | null>(null); // ✅ Message type (success/error)
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -45,40 +53,46 @@ export default function LoginPage() {
       email: "",
       password: "",
     },
-  })
+  });
 
+  // ✅ Handle Form Submission
   async function onSubmit(values: z.infer<typeof formSchema>) {
-    setIsLoading(true)
+    setIsLoading(true);
+    setMessage(null); // Reset message before new attempt
 
     try {
-      const data = await login(values.email, values.password)
+      const data = await login(values.email, values.password);
 
-      // ✅ Store JWT token & user data
-      localStorage.setItem("token", data.token)
-      localStorage.setItem("user", JSON.stringify(data.user))
+      if (!data?.token || !data?.user) {
+        throw new Error("Invalid response from server");
+      }
 
-      toast({
-        title: "Login successful",
-        description: "Redirecting to your dashboard...",
-      })
+      // ✅ Save token & user data in localStorage
+      localStorage.setItem("token", data.token);
+      localStorage.setItem("user", JSON.stringify(data.user));
+
+      // ✅ Set Success Message
+      setMessage("✅ Login successful! Redirecting...");
+      setMessageType("success");
 
       // ✅ Redirect based on user role
-      if (data.user.role === "faculty") {
-        router.push("/dashboard")
-      } else {
-        router.push("/student/tests")
-      }
+      setTimeout(() => {
+        if (data.user.role === "faculty") {
+          router.push("/dashboard");
+        } else {
+          router.push("/student/tests");
+        }
+      }, 1000);
+      
     } catch (error) {
-      // ✅ Properly handle unknown error type
-      const errMessage = error instanceof Error ? error.message : "Invalid email or password. Try again."
+      console.error("Login Error:", error);
 
-      toast({
-        variant: "destructive",
-        title: "Login failed",
-        description: errMessage,
-      })
+      // ❌ Set Error Message
+      setMessage("❌ Login failed: " + (error instanceof Error ? error.message : "Try again."));
+      setMessageType("error");
+      
     } finally {
-      setIsLoading(false)
+      setIsLoading(false);
     }
   }
 
@@ -92,8 +106,21 @@ export default function LoginPage() {
           <h1 className="text-2xl font-semibold tracking-tight">Welcome back</h1>
           <p className="text-sm text-muted-foreground">Enter your credentials to sign in to your account</p>
         </div>
+
+        {/* ✅ Show Message */}
+        {message && (
+          <div
+            className={`p-3 rounded-lg text-sm text-center ${
+              messageType === "success" ? "bg-green-200 text-green-800" : "bg-red-200 text-red-800"
+            }`}
+          >
+            {message}
+          </div>
+        )}
+
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+            {/* Email Field */}
             <FormField
               control={form.control}
               name="email"
@@ -107,6 +134,8 @@ export default function LoginPage() {
                 </FormItem>
               )}
             />
+
+            {/* Password Field */}
             <FormField
               control={form.control}
               name="password"
@@ -120,11 +149,15 @@ export default function LoginPage() {
                 </FormItem>
               )}
             />
+
+            {/* Submit Button */}
             <Button type="submit" className="w-full" disabled={isLoading}>
               {isLoading ? "Signing in..." : "Sign In"}
             </Button>
           </form>
         </Form>
+
+        {/* Sign Up Link */}
         <div className="text-center text-sm">
           Don&apos;t have an account?{" "}
           <Link href="/signup" className="underline underline-offset-4 hover:text-primary">
@@ -133,5 +166,5 @@ export default function LoginPage() {
         </div>
       </div>
     </div>
-  )
+  );
 }
