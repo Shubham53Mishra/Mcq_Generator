@@ -23,21 +23,28 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const fileBuffer = Buffer.from(await file.arrayBuffer());
-    const parsedData = await pdfParse(fileBuffer);
+    const buffer = Buffer.from(await file.arrayBuffer());
+    const parsed = await pdfParse(buffer);
 
-    const MAX_CHARS = 12000;
-    const extractedText = parsedData.text.slice(0, MAX_CHARS);
+    const MAX_LENGTH = 12000;
+    const extractedText = parsed.text.slice(0, MAX_LENGTH);
 
     if (process.env.NODE_ENV !== "production") {
-      console.log("Extracted text preview:", extractedText.slice(0, 500));
+      console.log("📝 Extracted text preview:\n", extractedText.slice(0, 300));
     }
 
     const questions = await extractQuestionsWithGemini(extractedText);
 
-    return NextResponse.json({ success: true, questions });
+    if (!questions) {
+      return NextResponse.json(
+        { success: false, message: "Gemini API did not return questions" },
+        { status: 500 }
+      );
+    }
+
+    return NextResponse.json({ success: true, questions }, { status: 200 });
   } catch (error) {
-    console.error("Error processing PDF:", error);
+    console.error("❌ Error processing PDF:", error);
     return NextResponse.json(
       { success: false, message: "Failed to process the PDF" },
       { status: 500 }
@@ -45,7 +52,7 @@ export async function POST(req: NextRequest) {
   }
 }
 
-async function extractQuestionsWithGemini(text: string) {
+async function extractQuestionsWithGemini(text: string): Promise<string> {
   const GEMINI_API_URL =
     "https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent";
   const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
@@ -55,7 +62,7 @@ async function extractQuestionsWithGemini(text: string) {
   }
 
   try {
-    const response = await axios.post(
+    const res = await axios.post(
       `${GEMINI_API_URL}?key=${GEMINI_API_KEY}`,
       {
         contents: [
@@ -78,14 +85,13 @@ Text:\n\n${text}`,
       }
     );
 
-    const geminiResponse =
-      response.data?.candidates?.[0]?.content?.parts?.[0]?.text || "";
-
-    return geminiResponse;
+    return (
+      res.data?.candidates?.[0]?.content?.parts?.[0]?.text?.trim() || ""
+    );
   } catch (error: any) {
     console.error(
-      "Error calling Gemini API:",
-      error?.response?.data || error.message || error
+      "❌ Gemini API Error:",
+      error?.response?.data || error.message
     );
     return "";
   }
