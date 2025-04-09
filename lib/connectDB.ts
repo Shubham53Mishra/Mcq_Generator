@@ -1,3 +1,5 @@
+import mongoose from 'mongoose';
+
 export async function connectDB() {
   try {
     if (!process.env.MONGO_URI) {
@@ -6,16 +8,14 @@ export async function connectDB() {
 
     if (mongoose.connection.readyState === 1) return;
 
-    console.log("🔍 Connecting to:", process.env.MONGO_URI); // Debugging line
+    console.log("🔍 Connecting to:", process.env.MONGO_URI);
 
     await mongoose.connect(process.env.MONGO_URI, {
-      useNewUrlParser: true,
-      useUnifiedTopology: true,
-      serverSelectionTimeoutMS: 10000, // 10s timeout
+      serverSelectionTimeoutMS: 20000, // Optional: wait up to 10s
     });
 
     console.log("✅ MongoDB connected successfully");
-  } catch (error) {
+  } catch (error: any) {
     console.error("❌ MongoDB connection error:", error.message);
   }
 }
